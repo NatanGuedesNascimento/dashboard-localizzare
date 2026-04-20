@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Localizzare & SFleet 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0B0E14;--bg2:#111520;--bg3:#161B27;--bg4:#1C2333;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#E8ECF4;--text2:#8A93A8;--text3:#4D5668;
+  --green:#1FC679;--green-bg:rgba(31,198,121,0.10);
+  --amber:#F5A623;--amber-bg:rgba(245,166,35,0.10);
+  --red:#F04F5A;--red-bg:rgba(240,79,90,0.10);
+  --blue:#4B8EF5;--blue-bg:rgba(75,142,245,0.10);
+  --purple:#9B7BF5;--purple-bg:rgba(155,123,245,0.10);
+}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.5;min-height:100vh;}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:58px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:4px;z-index:200;}
+.logo{width:34px;height:34px;border-radius:9px;margin-bottom:10px;background:linear-gradient(135deg,var(--green),#0A8A52);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;letter-spacing:-1px;}
+.nav-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .15s;color:var(--text3);}
+.nav-icon:hover{background:var(--bg4);color:var(--text2);}
+.nav-icon.active{background:var(--green-bg);color:var(--green);}
+.nav-spacer{flex:1}
+.main{margin-left:58px;padding:18px 22px 30px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.topbar h1{font-size:17px;font-weight:600;letter-spacing:-.3px;}
+.topbar p{font-size:11px;color:var(--text3);margin-top:1px;}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.live-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);background:var(--green-bg);border:1px solid rgba(31,198,121,.2);border-radius:20px;padding:4px 10px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pill{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 11px;font-size:12px;color:var(--text2);cursor:pointer;transition:border-color .15s;font-family:'DM Sans',sans-serif;outline:none;}
+select.pill{appearance:none;padding-right:20px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234D5668'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;}
+.pill:hover{border-color:var(--border2);}
+.btn-r{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-r:hover{opacity:.85;}
+.btn-r:disabled{opacity:.4;cursor:not-allowed;}
+#prog-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:none;}
+#prog-label{font-size:12px;color:var(--text2);margin-bottom:8px;display:flex;justify-content:space-between;}
+#prog-track{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+#prog-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s ease;width:0%;}
+#prog-detail{font-size:11px;color:var(--text3);margin-top:5px;}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+@media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr);}}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px 15px;position:relative;overflow:hidden;}
+.kpi:hover{border-color:var(--border2);}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.green::before{background:var(--green);}
+.kpi.amber::before{background:var(--amber);}
+.kpi.red::before{background:var(--red);}
+.kpi.blue::before{background:var(--blue);}
+.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:5px;}
+.kpi-val{font-size:24px;font-weight:600;letter-spacing:-1px;color:var(--text);line-height:1;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:5px;}
+.up{color:var(--green);} .dn{color:var(--red);}
+.kpi-icon{position:absolute;right:12px;top:12px;width:27px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.kpi-icon.green{background:var(--green-bg);color:var(--green);}
+.kpi-icon.amber{background:var(--amber-bg);color:var(--amber);}
+.kpi-icon.red{background:var(--red-bg);color:var(--red);}
+.kpi-icon.blue{background:var(--blue-bg);color:var(--blue);}
+.g2-1{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+@media(max-width:1000px){.g2-1,.g3,.g2{grid-template-columns:1fr;}}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:15px;}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.card-title{font-size:13px;font-weight:500;color:var(--text);}
+.card-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.badge{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:500;white-space:nowrap;}
+.badge.green{background:var(--green-bg);color:var(--green);}
+.badge.amber{background:var(--amber-bg);color:var(--amber);}
+.badge.blue{background:var(--blue-bg);color:var(--blue);}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.hbar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.hbar-lbl{font-size:11px;color:var(--text2);width:72px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hbar-track{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.hbar-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.hbar-val{font-size:11px;color:var(--text3);width:26px;flex-shrink:0;font-family:'DM Mono',monospace;text-align:right;}
+.tbl-wrap{overflow:auto;max-height:220px;}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1;}
+tbody td{padding:6px 10px;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:var(--bg3);}
+.stag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;}
+.insight-list{display:flex;flex-direction:column;gap:7px;}
+.insight{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--bg3);border-radius:7px;border:1px solid var(--border);}
+.insight-dot{width:6px;height:6px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+.insight-txt{font-size:11px;color:var(--text2);line-height:1.6;}
+.insight-txt strong{color:var(--text);}
+.donut-mix{display:flex;align-items:center;gap:14px;}
+.donut-labels{flex:1;display:flex;flex-direction:column;gap:8px;}
+.dl-row{display:flex;flex-direction:column;gap:3px;}
+.dl-name{font-size:12px;color:var(--text);}
+.dl-bar{display:flex;align-items:center;gap:6px;}
+#overlay{position:fixed;inset:0;background:rgba(11,14,20,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:10px;}
+.spinner{width:36px;height:36px;border:3px solid var(--bg4);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#ov-msg{font-size:13px;color:var(--text2);}
+#ov-sub{font-size:11px;color:var(--text3);}
+.cw{position:relative;}
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div class="spinner"></div>
+  <div id="ov-msg">Conectando ao Google Sheets…</div>
+  <div id="ov-sub">Aguarde</div>
+</div>
+
+<div class="sidebar">
+  <div class="logo">Lz</div>
+  <div class="nav-icon active">⊞</div>
+  <div class="nav-icon">📋</div>
+  <div class="nav-icon">🔧</div>
+  <div class="nav-icon">📦</div>
+  <div class="nav-icon">👥</div>
+  <div class="nav-spacer"></div>
+  <div class="nav-icon">⚙</div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+      <h1>Controle de Serviços 2026</h1>
+      <p>Localizzare & SFleet · <span id="last-updated">—</span></p>
+    </div>
+    <div class="topbar-right">
+      <div class="live-badge"><span class="live-dot"></span> Google Sheets ao vivo</div>
+      <select id="f-mes"     class="pill" onchange="applyFilters()"><option value="">Todos os meses</option></select>
+      <select id="f-servico" class="pill" onchange="applyFilters()"><option value="">Todos os serviços</option></select>
+      <select id="f-tecnico" class="pill" onchange="applyFilters()"><option value="">Todos os técnicos</option></select>
+      <button class="btn-r" id="btn-r" onclick="initLoad()">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <div id="prog-wrap">
+    <div id="prog-label"><span id="prog-txt">Carregando…</span><span id="prog-pct">0%</span></div>
+    <div id="prog-track"><div id="prog-fill"></div></div>
+    <div id="prog-detail"></div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi green"><div class="kpi-label">Total de OS</div><div class="kpi-icon green">📋</div><div class="kpi-val" id="k-total">—</div><div class="kpi-sub">ordens de serviço</div></div>
+    <div class="kpi green"><div class="kpi-label">Concluídas</div><div class="kpi-icon green">✓</div><div class="kpi-val" id="k-conc">—</div><div class="kpi-sub"><span id="k-tx" class="up">—</span> taxa de conclusão</div></div>
+    <div class="kpi amber"><div class="kpi-label">Faturamento Guincho</div><div class="kpi-icon amber">R$</div><div class="kpi-val" id="k-fat">—</div><div class="kpi-sub"><span id="k-fatq">—</span> serviços com valor</div></div>
+    <div class="kpi blue"><div class="kpi-label">Dentro do RP</div><div class="kpi-icon blue">📍</div><div class="kpi-val" id="k-dentro">—</div><div class="kpi-sub"><span id="k-dentropct" class="up">—</span> do total</div></div>
+    <div class="kpi red"><div class="kpi-label">Fora do RP</div><div class="kpi-icon red">⚠</div><div class="kpi-val" id="k-fora">—</div><div class="kpi-sub"><span id="k-forapct" class="dn">—</span> custo extra</div></div>
+  </div>
+
+  <div class="g2-1">
+    <div class="card">
+      <div class="card-head">
+        <div><div class="card-title">OS por Tipo de Serviço — Evolução Mensal</div><div class="card-sub">Todos os meses com dados · barras empilhadas + tendência</div></div>
+        <span class="badge amber" id="badge-periodo">—</span>
+      </div>
+      <div class="legend" id="leg-stacked"></div>
+      <div class="cw" style="height:185px"><canvas id="c-stacked" role="img" aria-label="OS por tipo por mês"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Por Empresa</div><div class="card-sub">Parceiros ativos</div></div></div>
+      <div class="donut-mix">
+        <div style="width:110px;height:110px;position:relative;flex-shrink:0">
+          <canvas id="c-empresa" role="img" aria-label="OS por empresa"></canvas>
+          <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none">
+            <div style="font-size:17px;font-weight:600;color:var(--text)" id="d-emp-n">—</div>
+            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">empresas</div>
+          </div>
+        </div>
+        <div class="donut-labels" id="empresa-labels"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Ranking de Técnicos</div><div class="card-sub">OS no período selecionado</div></div><span class="badge blue">Top 6</span></div>
+      <div id="tecnico-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Dentro vs Fora do RP</div><div class="card-sub">Por mês</div></div></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Dentro RP</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Fora RP</div>
+      </div>
+      <div class="cw" style="height:150px"><canvas id="c-rp" role="img" aria-label="Dentro vs Fora RP por mês"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Tipo de Despacho</div><div class="card-sub">Interno vs Externo</div></div></div>
+      <div id="despacho-content"></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Detalhamento de OS</div><div class="card-sub">Registros do período filtrado</div></div><span class="badge amber" id="badge-tbl">—</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Técnico</th><th>Localização</th><th>Mês</th><th>Status</th></tr></thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">Insights Automáticos</div><div class="card-sub">Gerados a partir dos dados carregados</div></div></div>
+      <div class="insight-list" id="insights"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIGURAÇÃO ─────────────────────────────────────────────────────────────
+const BASE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR39LKs4tZcg8dmdFLxMSJVHbhY6YGcCScf0uysSoiGrQcqn5vM0XddiMKv57VeWrTaZnxnKPD5YvjW";
+
+const MESES = [
+  { nome:'Janeiro',   gid:1223119055 },
+  { nome:'Fevereiro', gid:621290866  },
+  { nome:'Março',     gid:410078803  },
+  { nome:'Abril',     gid:879511007  },
+  { nome:'Maio',      gid:946880763  },
+  { nome:'Junho',     gid:1923430921 },
+  { nome:'Julho',     gid:1357371441 },
+  { nome:'Agosto',    gid:1915385361 },
+  { nome:'Setembro',  gid:633875504  },
+  { nome:'Outubro',   gid:1226177750 },
+  { nome:'Novembro',  gid:893573825  },
+  { nome:'Dezembro',  gid:1929120386 },
+];
+
+const CORES = {
+  'INSTALAÇÃO':'#4B8EF5','RETIRADA':'#1FC679','MANUTENÇÃO':'#F5A623',
+  'GUINCHO':'#F04F5A','ATUALIZAÇÃO DE TECNOLOGIA':'#9B7BF5',
+  'INSTALAÇÃO DE BLOQUEIO':'#F0A030','EMERGENCIAL':'#F04F5A',
+  'DESBLOQUEIO EMERGENCIAL':'#F04F5A','INSTALAÇÃO CAMERA E IDENTIFICADOR':'#9B7BF5',
+};
+const COR_EMP = ['#1FC679','#4B8EF5','#9B7BF5','#F5A623','#F04F5A'];
+
+let RAW=[], FILTERED=[], charts={};
+Chart.defaults.color='#4D5668';
+Chart.defaults.borderColor='rgba(255,255,255,0.05)';
+Chart.defaults.font.family="'DM Sans', sans-serif";
+Chart.defaults.font.size=11;
+
+window.addEventListener('load', initLoad);
+
+async function initLoad() {
+  RAW=[];
+  document.getElementById('btn-r').disabled=true;
+  setOv('Conectando ao Google Sheets…','Iniciando…');
+  showProg(true);
+  let comDados=0;
+
+  for(let i=0; i<MESES.length; i++){
+    const {nome,gid}=MESES[i];
+    updProg(i, MESES.length, `Carregando ${nome}…`);
+    setOv(`Carregando ${nome}…`,`${i} de ${MESES.length} meses`);
+    const rows = await fetchMes(nome, gid);
+    if(rows.length>0){ RAW.push(...rows); comDados++; }
+  }
+
+  updProg(MESES.length, MESES.length, `${comDados} meses com dados`);
+  showProg(false);
+
+  if(RAW.length===0){
+    ovErro('Nenhum dado encontrado.<br>Verifique se a planilha está publicada como CSV no Google Sheets.');
+    return;
+  }
+
+  hideOv();
+  document.getElementById('btn-r').disabled=false;
+  document.getElementById('last-updated').textContent=
+    'Atualizado '+new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+
+    ' · '+comDados+' meses · '+RAW.length+' OS';
+
+  populateFilters();
+  applyFilters();
+}
+
+function fetchMes(nome, gid){
+  return new Promise(resolve=>{
+    const url=`${BASE}/pub?gid=${gid}&single=true&output=csv`;
+    Papa.parse(url,{
+      download:true, header:false, skipEmptyLines:true,
+      complete: r=>{ try{ resolve(parseRows(r.data, nome)); }catch(e){ resolve([]); } },
+      error: ()=>resolve([])
+    });
+  });
+}
+
+// ── PARSER CORRIGIDO ─────────────────────────────────────────────────────────
+// A planilha tem esta estrutura:
+// Row 0: título  "REGISTRO DE SERVIÇOS — MES/2026 | ..."
+// Row 1: descrição das colunas em texto corrido
+// Row 2: cabeçalhos reais  DATA | CLIENTE | (vazio) | SERVIÇO | PLACA | ...
+// Row 3+: dados
+//
+// Mapeamento fixo por índice de coluna (mais robusto que busca por nome):
+// 0=DATA, 1=CLIENTE, 2=NOVO/ANTIGO, 3=SERVIÇO, 4=PLACA, 5=EQUIP_IMEI,
+// 6=TIPO_DESPACHO, 7=STATUS_DESPACHO, 8=EQUIP_ANTIGO, 9=EMPRESA,
+// 10=TECNICO, 11=DENTRO_FORA_RP, 12=VLR_SERVICO, 13=VLR_GUINCHO,
+// 19=STATUS_OS
+
+function parseRows(data, mesNome){
+  // Encontra a linha do cabeçalho procurando por "DATA" na col 0
+  let hi=-1;
+  for(let i=0; i<Math.min(data.length,8); i++){
+    const v=String(data[i][0]||'').trim().toUpperCase();
+    if(v==='DATA'){ hi=i; break; }
+  }
+  // Fallback: procura linha com DATA e CLIENTE em qualquer coluna
+  if(hi===-1){
+    for(let i=0; i<Math.min(data.length,8); i++){
+      const row=data[i].map(c=>String(c||'').trim().toUpperCase());
+      if(row.includes('DATA')&&row.includes('CLIENTE')){ hi=i; break; }
+    }
+  }
+  if(hi===-1) return [];
+
+  const rows=[];
+  for(let i=hi+1; i<data.length; i++){
+    const r=data[i];
+    const data0=String(r[0]||'').trim();
+    // Pula linhas vazias ou que são cabeçalhos repetidos
+    if(!data0||data0.toUpperCase()==='DATA') continue;
+    // Verifica se parece uma data válida
+    if(!data0.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/)) continue;
+
+    const get=(idx)=>String(r[idx]||'').trim();
+
+    // Parse data
+    let dateObj=null;
+    const rd=get(0);
+    if(rd.match(/\d{2}\/\d{2}\/\d{4}/)){
+      const [d,m,y]=rd.split('/'); dateObj=new Date(+y,+m-1,+d);
+    }else if(rd.match(/\d{4}-\d{2}-\d{2}/)){
+      dateObj=new Date(rd);
+    }
+
+    const rp=get(11).toUpperCase();
+    const obj={
+      _date:    dateObj,
+      _mesNome: mesNome,
+      _cliente: get(1),
+      _servico: get(3).toUpperCase(),
+      _placa:   get(4),
+      _despacho:get(6).toUpperCase(),
+      _statusD: get(7).toUpperCase(),
+      _empresa: get(9),
+      _tecnico: get(10),
+      _rp:      rp,
+      _isDentro:rp.includes('DENTRO'),
+      _isFora:  rp.includes('FORA'),
+      _vlrs:    parseFloat(get(12).replace(',','.'))||0,
+      _vlrg:    parseFloat(get(13).replace(',','.'))||0,
+      _status:  get(19).toUpperCase(),
+      DATA:     get(0),
+    };
+
+    if(obj._cliente||obj._servico) rows.push(obj);
+  }
+  return rows;
+}
+
+// ── FILTROS ───────────────────────────────────────────────────────────────────
+function populateFilters(){
+  const mesesComDados=MESES.map(m=>m.nome).filter(m=>RAW.some(r=>r._mesNome===m));
+  const servicos=[...new Set(RAW.map(r=>r._servico).filter(Boolean))].sort();
+  const tecnicos=[...new Set(RAW.map(r=>r._tecnico).filter(Boolean))].sort();
+  fillSel('f-mes',mesesComDados);
+  fillSel('f-servico',servicos);
+  fillSel('f-tecnico',tecnicos);
+}
+
+function fillSel(id,opts){
+  const el=document.getElementById(id);
+  const val=el.value;
+  while(el.options.length>1) el.remove(1);
+  opts.forEach(o=>el.appendChild(new Option(o,o)));
+  if(val) el.value=val;
+}
+
+function applyFilters(){
+  const mes    =document.getElementById('f-mes').value;
+  const servico=document.getElementById('f-servico').value;
+  const tecnico=document.getElementById('f-tecnico').value;
+  FILTERED=RAW.filter(r=>
+    (!mes     ||r._mesNome===mes)&&
+    (!servico ||r._servico===servico)&&
+    (!tecnico ||r._tecnico===tecnico)
+  );
+  renderAll();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll(){ renderKPIs();renderStacked();renderEmpresa();renderTecnicos();renderRP();renderDespacho();renderTable();renderInsights(); }
+
+function renderKPIs(){
+  const n=FILTERED.length;
+  const conc=FILTERED.filter(r=>r._status.includes('CONCLU')).length;
+  const fat=FILTERED.reduce((s,r)=>s+r._vlrg,0);
+  const fatQ=FILTERED.filter(r=>r._vlrg>0).length;
+  const rpR=FILTERED.filter(r=>r._rp!=='');
+  const dentro=FILTERED.filter(r=>r._isDentro).length;
+  const fora=FILTERED.filter(r=>r._isFora).length;
+  const pctD=rpR.length?Math.round(dentro/rpR.length*100):0;
+  const pctF=rpR.length?Math.round(fora/rpR.length*100):0;
+  set('k-total',n);
+  set('k-conc',conc);
+  set('k-tx',(n?Math.round(conc/n*100):0)+'%');
+  set('k-fat',fat?'R$\u00a0'+fat.toLocaleString('pt-BR'):'—');
+  set('k-fatq',fatQ);
+  set('k-dentro',dentro);
+  set('k-dentropct',pctD+'%');
+  set('k-fora',fora);
+  set('k-forapct',pctF+'%');
+  const mA=[...new Set(FILTERED.map(r=>r._mesNome))];
+  set('badge-periodo',mA.length===1?mA[0]:mA.length+' meses');
+  set('badge-tbl',n+' registros');
+}
+
+function renderStacked(){
+  const mA=MESES.map(m=>m.nome).filter(m=>FILTERED.some(r=>r._mesNome===m));
+  const servicos=[...new Set(FILTERED.map(r=>r._servico).filter(Boolean))];
+  const corDe=s=>CORES[s]||'#4D5668';
+  const datasets=servicos.map(s=>({
+    type:'bar',label:cap(s),
+    data:mA.map(m=>FILTERED.filter(r=>r._mesNome===m&&r._servico===s).length),
+    backgroundColor:corDe(s)+'CC',stack:'a',borderRadius:2,
+  }));
+  const totais=mA.map(m=>FILTERED.filter(r=>r._mesNome===m).length);
+  datasets.push({type:'line',label:'Total',data:totais,borderColor:'rgba(255,255,255,0.35)',borderWidth:2,borderDash:[4,3],pointRadius:4,pointBackgroundColor:'#fff',fill:false,tension:.3,stack:undefined});
+  document.getElementById('leg-stacked').innerHTML=servicos.map(s=>`<div class="leg-item"><div class="leg-dot" style="background:${corDe(s)}"></div>${cap(s)}</div>`).join('')+`<div class="leg-item"><div style="width:14px;height:2px;background:rgba(255,255,255,.3);display:inline-block"></div>&nbsp;Total</div>`;
+  kill('c-stacked');
+  charts['c-stacked']=new Chart(document.getElementById('c-stacked'),{
+    data:{labels:mA,datasets},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index'}},
+      scales:{x:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4D5668',maxRotation:30}},y:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4D5668'}}}}
+  });
+}
+
+function renderEmpresa(){
+  const cnt=countBy(FILTERED,r=>r._empresa||'N/A');
+  const labels=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
+  const data=labels.map(l=>cnt[l]);
+  const total=data.reduce((s,v)=>s+v,0);
+  set('d-emp-n',labels.length);
+  kill('c-empresa');
+  charts['c-empresa']=new Chart(document.getElementById('c-empresa'),{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:COR_EMP.slice(0,labels.length),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false}}}
+  });
+  document.getElementById('empresa-labels').innerHTML=labels.slice(0,4).map((l,i)=>`
+    <div class="dl-row"><div class="dl-name">${l}</div>
+    <div class="dl-bar">
+      <div class="hbar-track" style="flex:1"><div class="hbar-fill" style="width:${Math.round(cnt[l]/total*100)}%;background:${COR_EMP[i]}"></div></div>
+      <span style="font-size:11px;color:var(--text2);width:22px;text-align:right;font-family:'DM Mono',monospace">${cnt[l]}</span>
+    </div></div>`).join('');
+}
+
+function renderTecnicos(){
+  const cnt=countBy(FILTERED,r=>r._tecnico||'N/A');
+  const sorted=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const max=sorted[0]?.[1]||1;
+  const cores=['#1FC679','#4B8EF5','#F5A623','#F5A623','#F04F5A','#F04F5A'];
+  document.getElementById('tecnico-bars').innerHTML=sorted.map(([n,v],i)=>`
+    <div class="hbar-row">
+      <div class="hbar-lbl" title="${n}">${n}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(v/max*100)}%;background:${cores[i]}"></div></div>
+      <div class="hbar-val">${v}</div>
+    </div>`).join('');
+}
+
+function renderRP(){
+  const mA=MESES.map(m=>m.nome).filter(m=>FILTERED.some(r=>r._mesNome===m));
+  const dentro=mA.map(m=>FILTERED.filter(r=>r._mesNome===m&&r._isDentro).length);
+  const fora=mA.map(m=>FILTERED.filter(r=>r._mesNome===m&&r._isFora).length);
+  kill('c-rp');
+  charts['c-rp']=new Chart(document.getElementById('c-rp'),{
+    type:'bar',
+    data:{labels:mA,datasets:[
+      {label:'Dentro RP',data:dentro,backgroundColor:'rgba(31,198,121,.8)',borderRadius:3},
+      {label:'Fora RP',data:fora,backgroundColor:'rgba(240,79,90,.8)',borderRadius:3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4D5668',maxRotation:30}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4D5668'}}}}
+  });
+}
+
+function renderDespacho(){
+  const interno=FILTERED.filter(r=>r._despacho.includes('INTERNO')).length;
+  const externo=FILTERED.filter(r=>r._despacho.includes('EXTERNO')).length;
+  const t=interno+externo||1;
+  const instalados=FILTERED.filter(r=>r._statusD.includes('INSTALAD')).length;
+  document.getElementById('despacho-content').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:12px;color:var(--text)">Técnico Interno</span>
+          <span style="font-size:12px;font-weight:600;color:var(--green)">${interno} <span style="color:var(--text3);font-weight:400">· ${Math.round(interno/t*100)}%</span></span>
+        </div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(interno/t*100)}%;background:var(--green)"></div></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:12px;color:var(--text)">Técnico Externo</span>
+          <span style="font-size:12px;font-weight:600;color:var(--blue)">${externo} <span style="color:var(--text3);font-weight:400">· ${Math.round(externo/t*100)}%</span></span>
+        </div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(externo/t*100)}%;background:var(--blue)"></div></div>
+      </div>
+      <div style="padding:10px;background:var(--bg3);border-radius:7px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">SLA de Instalação</div>
+        <div style="font-size:20px;font-weight:600;color:var(--text)">${instalados} <span style="font-size:13px;color:var(--green)">instalados</span></div>
+        <div style="font-size:11px;color:var(--text3)">com status confirmado</div>
+      </div>
+    </div>`;
+}
+
+function renderTable(){
+  const rows=FILTERED.slice(0,100);
+  const sc=s=>s.includes('CONCLU')?'background:var(--green-bg);color:var(--green)':s.includes('PENDENTE')?'background:var(--amber-bg);color:var(--amber)':'background:var(--red-bg);color:var(--red)';
+  const rc=r=>r.includes('DENTRO')?'color:var(--green);font-size:10px':r.includes('FORA')?'color:var(--red);font-size:10px':'color:var(--text3);font-size:10px';
+  document.getElementById('tbl-body').innerHTML=rows.map(r=>`
+    <tr>
+      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${r.DATA.substring(0,10)||'—'}</td>
+      <td>${trunc(r._cliente,22)}</td>
+      <td style="color:${CORES[r._servico]||'var(--text2)'}">${cap(r._servico)||'—'}</td>
+      <td>${r._tecnico||'—'}</td>
+      <td><span style="${rc(r._rp)}">${r._rp||'—'}</span></td>
+      <td style="color:var(--text3)">${r._mesNome}</td>
+      <td><span class="stag" style="${sc(r._status)}">${cap(r._status)||'—'}</span></td>
+    </tr>`).join('');
+}
+
+function renderInsights(){
+  const n=FILTERED.length;
+  if(!n){ document.getElementById('insights').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Sem dados no período</div>'; return; }
+  const ins=[];
+  const conc=FILTERED.filter(r=>r._status.includes('CONCLU')).length;
+  const tx=Math.round(conc/n*100);
+  ins.push({c:tx===100?'#1FC679':tx>=80?'#F5A623':'#F04F5A',t:`<strong>Taxa de conclusão: ${tx}%</strong> — ${conc} de ${n} OS concluídas.`});
+  const byTec=countBy(FILTERED,r=>r._tecnico||'N/A');
+  const top2=Object.entries(byTec).sort((a,b)=>b[1]-a[1]).slice(0,2);
+  if(top2.length>=2){ const pct=Math.round((top2[0][1]+top2[1][1])/n*100); ins.push({c:'#F5A623',t:`<strong>${top2[0][0]} (${top2[0][1]}) e ${top2[1][0]} (${top2[1][1]})</strong> respondem por ${pct}% do volume.`}); }
+  const fora=FILTERED.filter(r=>r._isFora).length;
+  if(fora>0) ins.push({c:'#F04F5A',t:`<strong>${Math.round(fora/n*100)}% fora do RP</strong> (${fora} OS) — avaliar custo de deslocamento.`});
+  const bySvc=countBy(FILTERED,r=>r._servico||'N/A');
+  const topS=Object.entries(bySvc).sort((a,b)=>b[1]-a[1])[0];
+  if(topS) ins.push({c:'#4B8EF5',t:`<strong>${cap(topS[0])}</strong> é o serviço mais frequente: ${topS[1]} OS (${Math.round(topS[1]/n*100)}%).`});
+  const semVal=FILTERED.filter(r=>r._vlrs===0&&r._vlrg===0).length;
+  if(semVal>n*0.5) ins.push({c:'#9B7BF5',t:`<strong>${semVal} OS sem valor registrado</strong> (${Math.round(semVal/n*100)}%) — preencher VLR_SERVIÇO.`});
+  const mA=[...new Set(FILTERED.map(r=>r._mesNome))];
+  ins.push({c:'#1FC679',t:`<strong>${mA.length} mês(es) com dados:</strong> ${mA.join(', ')}.`});
+  document.getElementById('insights').innerHTML=ins.map(i=>`
+    <div class="insight"><div class="insight-dot" style="background:${i.c}"></div><div class="insight-txt">${i.t}</div></div>`).join('');
+}
+
+// ── UTILITÁRIOS ───────────────────────────────────────────────────────────────
+const countBy=(arr,fn)=>arr.reduce((a,r)=>{const k=fn(r);a[k]=(a[k]||0)+1;return a;},{});
+const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1).toLowerCase():'';
+const trunc=(s,n)=>s&&s.length>n?s.slice(0,n)+'…':(s||'—');
+const kill=id=>{if(charts[id]){charts[id].destroy();delete charts[id];}};
+function setOv(m,s){document.getElementById('ov-msg').textContent=m;document.getElementById('ov-sub').textContent=s;}
+function hideOv(){document.getElementById('overlay').style.display='none';}
+function ovErro(msg){
+  document.getElementById('overlay').innerHTML=`
+    <div style="text-align:center;max-width:420px;padding:24px">
+      <div style="font-size:32px;margin-bottom:12px">⚠</div>
+      <div style="font-size:14px;color:var(--amber);margin-bottom:10px">Erro ao carregar dados</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8">${msg}</div>
+      <button class="btn-r" style="margin-top:18px" onclick="initLoad()">↻ Tentar novamente</button>
+    </div>`;
+  document.getElementById('overlay').style.display='flex';
+}
+function showProg(v){document.getElementById('prog-wrap').style.display=v?'block':'none';}
+function updProg(done,total,detail){
+  const pct=Math.round(done/total*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-txt').textContent=`Carregando ${done}/${total} meses`;
+  document.getElementById('prog-pct').textContent=pct+'%';
+  document.getElementById('prog-detail').textContent=detail;
+}
+</script>
+</body>
+</html>
