@@ -190,6 +190,13 @@ tbody tr:hover td{background:var(--bg3);}
 .dl-name{font-size:12px;color:var(--text);}
 .dl-bar{display:flex;align-items:center;gap:6px;}
 
+/* Empresa mobile fix */
+@media(max-width:640px){
+  .donut-mix{flex-direction:row!important;align-items:center;}
+  .donut-mix > div:first-child{width:90px!important;height:90px!important;flex-shrink:0;}
+  .dl-name{font-size:11px;}
+}
+
 /* ── OVERLAY ── */
 #overlay{
   position:fixed;inset:0;background:rgba(11,14,20,.93);
@@ -265,8 +272,8 @@ tbody tr:hover td{background:var(--bg3);}
   /* Insights */
   .insight-txt{font-size:11px;}
 
-  /* Donut: empilha verticalmente */
-  .donut-mix{flex-direction:column;align-items:flex-start;gap:10px;}
+  /* Donut: mantém lado a lado no mobile */
+  .donut-mix{flex-direction:row;align-items:center;}
 
   /* Hbar label menor */
   .hbar-lbl{width:60px;font-size:10px;}
