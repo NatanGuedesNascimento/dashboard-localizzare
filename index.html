@@ -586,22 +586,45 @@ function parseRows(data,mesNome){
     }
   }
   if(hi===-1) return [];
+  // Descobre índices reais das colunas pelo cabeçalho
+  const hrow = data[hi].map(c=>String(c||'').trim().toUpperCase());
+  const ci = name => {
+    // Tenta match exato, depois parcial
+    let idx = hrow.findIndex(h=>h===name);
+    if(idx===-1) idx = hrow.findIndex(h=>h.includes(name));
+    return idx;
+  };
+  const iVlrs  = ci('VLR SERVIÇO') !==-1 ? ci('VLR SERVIÇO')  : 12;
+  const iVlrg  = ci('VLR GUINCHO') !==-1 ? ci('VLR GUINCHO')  : 13;
+  const iRp    = ci('DENTRO/FORA') !==-1 ? ci('DENTRO/FORA')  : 11;
+  const iSvc   = ci('SERVIÇO')     !==-1 ? ci('SERVIÇO')      : 3;
+  const iDesp  = ci('TIPO DESPACHO')!=-1 ? ci('TIPO DESPACHO'): 6;
+  const iSDesp = ci('STATUS DESPACHO')!=-1?ci('STATUS DESPACHO'):7;
+  const iEmp   = ci('EMPRESA')     !==-1 ? ci('EMPRESA')      : 9;
+  const iTec   = ci('TÉCNICO')     !==-1 ? ci('TÉCNICO')      : 10;
+  const iStat  = ci('STATUS OS')   !==-1 ? ci('STATUS OS')    : 19;
+
   const rows=[];
   for(let i=hi+1;i<data.length;i++){
     const r=data[i];
     const d0=String(r[0]||'').trim();
     if(!d0||d0.toUpperCase()==='DATA') continue;
+    // Pula linha de total ("Total de OS...")
+    if(d0.toUpperCase().includes('TOTAL')) continue;
+    // Precisa ser uma data válida
     if(!d0.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/)) continue;
-    const g=idx=>String(r[idx]||'').trim();
-    const rp=g(11).toUpperCase();
+    const g=idx=>idx>=0&&idx<r.length?String(r[idx]||'').trim():'';
+    const rp=g(iRp).toUpperCase();
+    // Parse valores numéricos — remove R$, espaços, troca vírgula por ponto
+    const parseVal=v=>parseFloat(v.replace(/[R$\s]/g,'').replace(',','.'))||0;
     const obj={
-      _mesNome:mesNome,_cliente:g(1),_servico:g(3).toUpperCase(),
-      _despacho:g(6).toUpperCase(),_statusD:g(7).toUpperCase(),
-      _empresa:g(9),_tecnico:g(10),_rp:rp,
+      _mesNome:mesNome,_cliente:g(1),_servico:g(iSvc).toUpperCase(),
+      _despacho:g(iDesp).toUpperCase(),_statusD:g(iSDesp).toUpperCase(),
+      _empresa:g(iEmp),_tecnico:g(iTec),_rp:rp,
       _isDentro:rp.includes('DENTRO'),_isFora:rp.includes('FORA'),
-      _vlrs:parseFloat(g(12).replace(',','.'))||0,
-      _vlrg:parseFloat(g(13).replace(',','.'))||0,
-      _status:g(19).toUpperCase(),DATA:g(0),
+      _vlrs:parseVal(g(iVlrs)),
+      _vlrg:parseVal(g(iVlrg)),
+      _status:g(iStat).toUpperCase(),DATA:g(0),
     };
     if(obj._cliente||obj._servico) rows.push(obj);
   }
