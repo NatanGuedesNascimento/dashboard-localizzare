@@ -348,8 +348,7 @@ tbody tr:hover td{background:var(--bg3);}
   <!-- KPIs linha 2 — Faturamento -->
   <div class="kpi-fat-row">
     <div class="kpi amber"><div class="kpi-label">VLR Guincho</div><div class="kpi-icon amber">🚗</div><div class="kpi-val" id="k-vlrg">—</div><div class="kpi-sub"><span id="k-vlrg-q">—</span> atend. faturados</div></div>
-    <div class="kpi teal"><div class="kpi-label">VLR Serviço</div><div class="kpi-icon teal">🔧</div><div class="kpi-val" id="k-vlrs">—</div><div class="kpi-sub"><span id="k-vlrs-q">—</span> atend. faturados</div></div>
-    <div class="kpi green kpi-fat-total">
+    <div class="kpi teal"><div class="kpi-label">VLR Serviço</div><div class="kpi-icon teal">🔧</div><div class="kpi-val" id="k-vlrs">—</div><div class="kpi-sub"><span id="k-vlrs-q">—</span> atend. faturados</div></div>    <div class="kpi green kpi-fat-total">
       <div class="kpi-label">Faturamento Total</div>
       <div class="kpi-icon green">R$</div>
       <div class="kpi-val" id="k-fat-total">—</div>
@@ -594,45 +593,58 @@ function parseRows(data,mesNome){
   if(hi===-1) return [];
   // Descobre índices reais das colunas pelo cabeçalho
   const hrow = data[hi].map(c=>String(c||'').trim().toUpperCase());
-  const ci = name => {
-    // Tenta match exato, depois parcial
-    let idx = hrow.findIndex(h=>h===name);
-    if(idx===-1) idx = hrow.findIndex(h=>h.includes(name));
-    return idx;
+  const ci = (...names) => {
+    for(const name of names){
+      const idx = hrow.findIndex(h=>h.includes(name));
+      if(idx!==-1) return idx;
+    }
+    return -1;
   };
-  const iVlrs  = ci('VLR SERVIÇO') !==-1 ? ci('VLR SERVIÇO')  : 12;
-  const iVlrg  = ci('VLR GUINCHO') !==-1 ? ci('VLR GUINCHO')  : 13;
-  const iRp    = ci('DENTRO/FORA') !==-1 ? ci('DENTRO/FORA')  : 11;
-  const iSvc   = ci('SERVIÇO')     !==-1 ? ci('SERVIÇO')      : 3;
-  const iDesp  = ci('TIPO DESPACHO')!=-1 ? ci('TIPO DESPACHO'): 6;
-  const iSDesp = ci('STATUS DESPACHO')!=-1?ci('STATUS DESPACHO'):7;
-  const iEmp   = ci('EMPRESA')     !==-1 ? ci('EMPRESA')      : 9;
-  const iTec   = ci('TÉCNICO')     !==-1 ? ci('TÉCNICO')      : 10;
-  const iStat  = ci('STATUS OS')   !==-1 ? ci('STATUS OS')    : 19;
+
+  // Mapeamento das colunas — busca por nome no cabeçalho real
+  const iSvc   = ci('SERVIÇO','SERVICO');
+  const iDesp  = ci('TIPO DESPACHO');
+  const iSDesp = ci('STATUS DESPACHO');
+  const iEmp   = ci('EMPRESA');
+  const iTec   = ci('TÉCNICO','TECNICO');
+  const iRp    = ci('DENTRO/FORA','DENTRO');
+  // VLR SERVIÇO vem ANTES de VLR GUINCHO na planilha
+  const iVlrs  = ci('VLR SERVIÇO','VLR SERVICO','VALOR SERVIÇO');
+  const iVlrg  = ci('VLR GUINCHO','VALOR GUINCHO');
+  const iStat  = ci('STATUS OS');
 
   const rows=[];
   for(let i=hi+1;i<data.length;i++){
     const r=data[i];
     const d0=String(r[0]||'').trim();
     if(!d0||d0.toUpperCase()==='DATA') continue;
-    // Pula linha de total ("Total de OS...")
     if(d0.toUpperCase().includes('TOTAL')) continue;
-    // Precisa ser uma data válida
     if(!d0.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/)) continue;
-    const g=idx=>idx>=0&&idx<r.length?String(r[idx]||'').trim():'';
+    const g=idx=>(idx>=0&&idx<r.length)?String(r[idx]||'').trim():'';
+    const parseVal=v=>parseFloat(v.replace(/[R$\s.]/g,'').replace(',','.'))||0;
     const rp=g(iRp).toUpperCase();
-    // Parse valores numéricos — remove R$, espaços, troca vírgula por ponto
-    const parseVal=v=>parseFloat(v.replace(/[R$\s]/g,'').replace(',','.'))||0;
     const obj={
-      _mesNome:mesNome,_cliente:g(1),_servico:g(iSvc).toUpperCase(),
-      _despacho:g(iDesp).toUpperCase(),_statusD:g(iSDesp).toUpperCase(),
-      _empresa:g(iEmp),_tecnico:g(iTec),_rp:rp,
-      _isDentro:rp.includes('DENTRO'),_isFora:rp.includes('FORA'),
-      _vlrs:parseVal(g(iVlrs)),
-      _vlrg:parseVal(g(iVlrg)),
-      _status:g(iStat).toUpperCase(),DATA:g(0),
+      _mesNome:mesNome,_cliente:g(1),
+      _servico: iSvc>=0  ? g(iSvc).toUpperCase()  : g(3).toUpperCase(),
+      _despacho:iDesp>=0 ? g(iDesp).toUpperCase() : g(6).toUpperCase(),
+      _statusD: iSDesp>=0? g(iSDesp).toUpperCase(): g(7).toUpperCase(),
+      _empresa: iEmp>=0  ? g(iEmp)                : g(9),
+      _tecnico: iTec>=0  ? g(iTec)                : g(10),
+      _rp:rp,_isDentro:rp.includes('DENTRO'),_isFora:rp.includes('FORA'),
+      _vlrs: iVlrs>=0 ? parseVal(g(iVlrs)) : 0,
+      _vlrg: iVlrg>=0 ? parseVal(g(iVlrg)) : 0,
+      _status:iStat>=0 ? g(iStat).toUpperCase() : g(19).toUpperCase(),
+      DATA:g(0),
     };
     if(obj._cliente||obj._servico) rows.push(obj);
+  }
+  // LOG de debug — remove depois de confirmar
+  if(mesNome==='Abril' && rows.length>0){
+    console.log(`[DEBUG Abril] iVlrs=${iVlrs} iVlrg=${iVlrg}`);
+    console.log(`[DEBUG Abril] row0 vlrs=${rows[0]._vlrs} vlrg=${rows[0]._vlrg}`);
+    const totalG=rows.reduce((s,r)=>s+r._vlrg,0);
+    const totalS=rows.reduce((s,r)=>s+r._vlrs,0);
+    console.log(`[DEBUG Abril] Total vlrg=${totalG} vlrs=${totalS}`);
   }
   return rows;
 }
